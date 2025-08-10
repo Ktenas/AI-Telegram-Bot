@@ -1,5 +1,3 @@
-# bot.py
-# 
 # ----------------------------
 # ENVIRONMENT VARIABLES NEEDED
 # ----------------------------
@@ -19,11 +17,8 @@ import json
 import requests
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-
-OPENWEBUI_API      = os.environ["OPENWEBUI_API"] # ends with "/api/chat/completions"
-
-OPENWEBUI_TOKEN    = os.environ["OPENWEBUI_TOKEN"]
-
+OPENWEBUI_API = os.environ["OPENWEBUI_API"] # ends with "/api/chat/completions"
+OPENWEBUI_TOKEN = os.environ["OPENWEBUI_TOKEN"]
 TELEGRAM_API = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
 
 OFFSET = None
