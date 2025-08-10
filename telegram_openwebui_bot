@@ -1,0 +1,84 @@
+# bot.py
+# 
+# ----------------------------
+# ENVIRONMENT VARIABLES NEEDED
+# ----------------------------
+# Before running, set these (example for Linux/Mac):
+#
+# export TELEGRAM_BOT_TOKEN="123:abc"
+# export OPENWEBUI_API="https://openwebui.example/api/chat/completions"
+# export OPENWEBUI_TOKEN="shh"
+#
+# Or place them in a .env file (git-ignored) and use python-dotenv in dev.
+#
+# -------------------------
+
+import os
+import time
+import json
+import requests
+
+TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+
+OPENWEBUI_API      = os.environ["OPENWEBUI_API"] # ends with "/api/chat/completions"
+
+OPENWEBUI_TOKEN    = os.environ["OPENWEBUI_TOKEN"]
+
+TELEGRAM_API = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
+
+OFFSET = None
+
+def get_updates():
+    global OFFSET
+    try:
+        resp = requests.get(f"{TELEGRAM_API}/getUpdates", params={"offset": OFFSET, "timeout": 30})
+        return resp.json().get("result", [])
+    except Exception as e:
+        print(f"[ERROR] get_updates: {e}")
+        return []
+
+def send_message(chat_id, text):
+    try:
+        requests.post(f"{TELEGRAM_API}/sendMessage", data={"chat_id": chat_id, "text": text})
+    except Exception as e:
+        print(f"[ERROR] send_message: {e}")
+
+def ask_openwebui(prompt):
+    payload = {
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "model": "chatgpt-4o-latest"
+    }
+    headers = {
+        "Authorization": f"Bearer {OPENWEBUI_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    try:
+        res = requests.post(OPENWEBUI_API, json=payload, headers=headers)
+        print(f"[DEBUG] API status: {res.status_code}")
+        print(f"[DEBUG] API response: {res.text}")
+        res.raise_for_status()
+        return res.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"[ERROR] ask_openwebui: {e}")
+        return f"⚠️ OpenWebUI error: {e}"
+
+if __name__ == "__main__":
+    print("Bot is running...")
+    while True:
+        updates = get_updates()
+        for update in updates:
+#            global OFFSET
+            OFFSET = update["update_id"] + 1
+            msg = update.get("message", {})
+            chat_id = msg.get("chat", {}).get("id")
+            text = msg.get("text", "")
+
+            if chat_id and text:
+                print(f"[RECV] {chat_id}: {text}")
+                try:
+                    reply = ask_openwebui(text)
+                except Exception as e:
+                    reply = f"⚠️ Error: {e}"
+                send_message(chat_id, reply)
+        time.sleep(1)
